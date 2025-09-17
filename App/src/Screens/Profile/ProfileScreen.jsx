@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,63 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Using MaterialCommunityIcons for various icons
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiClient from '../../api/client';
 
 const ProfileScreen = ({ navigation, onLogout }) => {
+  // State to hold user profile data fetched from the API
+  const [user, setUser] = useState(null);
+  // State to show a loading spinner while data is being fetched
+  const [loading, setLoading] = useState(true);
+
+  // Fetch profile data when the screen loads
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = await AsyncStorage.getItem('user_token');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        // Make the authenticated API call to get the user's profile
+        const response = await apiClient.get('/users/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setUser(response.data); // Save the fetched user data to state
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+      } finally {
+        setLoading(false); // Stop the loading spinner
+      }
+    };
+
+    fetchProfile();
+  }, []); // The empty array [] means this runs only once when the screen loads
+
+  // Show a loading spinner while fetching data
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#8E4DFF" />
+      </SafeAreaView>
+    );
+  }
+
+  // Show a message if the user data couldn't be loaded
+  if (!user) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <Text>Could not load profile. Please try logging in again.</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -23,19 +75,18 @@ const ProfileScreen = ({ navigation, onLogout }) => {
           <View style={{ width: 24 }} />
         </View>
 
-        {/* Profile Info */}
+        {/* Profile Info - Now uses live data from the server */}
         <View style={styles.profileInfo}>
           <View style={styles.avatarContainer}>
-            {/* Placeholder for avatar image */}
             <Image
-              source={require('../../Assets/Profile/userProfile.png')} // Placeholder for a female avatar
+              source={require('../../Assets/Profile/userProfile.png')}
               style={styles.avatar}
             />
             <TouchableOpacity style={styles.editIconContainer}>
               <Icon name="pencil" size={18} color="#FFF" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.profileName}>Harpreet Aujla | 24</Text>
+          <Text style={styles.profileName}>{`${user.name} | ${user.age}`}</Text>
         </View>
 
         {/* Settings Section */}
@@ -110,6 +161,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF',
   },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   scrollContent: {
     paddingVertical: 20,
     paddingHorizontal: 20,
@@ -133,7 +189,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#FF6F61', // Pinkish background for avatar
+    backgroundColor: '#FF6F61',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -148,7 +204,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#7B61FF', // Purple edit icon background
+    backgroundColor: '#7B61FF',
     borderRadius: 15,
     padding: 5,
   },
@@ -173,14 +229,14 @@ const styles = StyleSheet.create({
   },
   settingIcon: {
     marginRight: 15,
-    color: '#333', // Darker icon color for visibility
+    color: '#333',
   },
   settingText: {
     fontSize: 16,
     color: '#333',
   },
   button: {
-    backgroundColor: '#F0F0F0', // Light grey button background
+    backgroundColor: '#F0F0F0',
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
@@ -192,7 +248,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   logoutButton: {
-    backgroundColor: '#4285F4', // Blue logout button
+    backgroundColor: '#4285F4',
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
