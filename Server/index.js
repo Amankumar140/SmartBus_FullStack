@@ -5,7 +5,8 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const db = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
-
+const userRoutes = require('./src/routes/userRoutes');
+const busRoutes = require('./src/routes/busRoutes');
 const app = express();
 const server = http.createServer(app);
 
@@ -28,7 +29,10 @@ app.get('/', (req, res) => {
   res.send('<h1>SmartBus Backend is Running!</h1>');
 });
 
+// all apis
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes); 
+app.use('/api/buses', busRoutes);
 
 // Basic Socket.io connection listener
 io.on('connection', (socket) => {
