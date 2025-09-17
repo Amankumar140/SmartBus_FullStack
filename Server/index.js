@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const db = require('./src/config/db');
+const reportRoutes = require('./src/routes/reportRoutes');
 
 // Import all route handlers
 const authRoutes = require('./src/routes/authRoutes');
@@ -24,15 +25,21 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3001;
 
+
+// --- NEW: Make the 'uploads' folder public ---
+ 
+
 // --- Middleware ---
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 
 // --- API Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/buses', busRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/reports', reportRoutes);
 
 // --- NEW: Socket.io Middleware for Authentication ---
 // This runs for every new socket connection to verify their JWT
