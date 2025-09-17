@@ -8,16 +8,32 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  useColorScheme,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../../api/client'; // 1. Import the API client
 import AsyncStorage from '@react-native-async-storage/async-storage'; // 2. Import AsyncStorage
+
+const lightThemeColors = {
+  text: '#333333',
+  placeholder: '#050404ff',
+};
+
+const darkThemeColors = {
+  text: '#100c0cff',
+  placeholder: '#757575',
+};
+
+
 
 const LoginScreen = ({ navigation, onLogin }) => {
   const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState(''); // 3. State for the password input
   const [error, setError] = useState('');       // 4. State for displaying errors
 
+    const colorScheme = useColorScheme();
+    const theme = colorScheme === 'dark' ? darkThemeColors : lightThemeColors;
   const handleLogin = async () => {
     setError(''); // Clear previous errors
     if (!mobileNumber || !password) {
@@ -71,9 +87,9 @@ const LoginScreen = ({ navigation, onLogin }) => {
             <View style={styles.mobileInputContainer}>
               <Text style={styles.countryCode}>+91 |</Text>
               <TextInput
-                style={styles.mobileInput}
+                style={[styles.mobileInput , {color:theme.text}]}
                 placeholder="Mobile"
-                placeholderTextColor="#A9A9A9"
+                placeholderTextColor={theme.placeholder}
                 keyboardType="phone-pad"
                 value={mobileNumber}
                 onChangeText={setMobileNumber}
@@ -83,9 +99,9 @@ const LoginScreen = ({ navigation, onLogin }) => {
 
             {/* 10. Added a new password input field */}
             <TextInput
-              style={styles.input}
+              style={[styles.input,{color:theme.text}]}
               placeholder="Password"
-              placeholderTextColor="#A9A9A9"
+              placeholderTextColor={theme.placeholder}
               value={password}
               onChangeText={setPassword}
               secureTextEntry // This hides the password characters

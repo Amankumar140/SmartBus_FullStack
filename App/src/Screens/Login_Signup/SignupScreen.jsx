@@ -9,56 +9,70 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  useColorScheme,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import apiClient from '../../api/client'; // 1. Import our API client
+import apiClient from '../../api/client';
+
+// 1. Define your colors directly in this file for text and placeholders
+const lightThemeColors = {
+  text: '#333333',
+  placeholder: '#050404ff',
+};
+
+const darkThemeColors = {
+  text: '#100c0cff',
+  placeholder: '#757575',
+};
 
 const SignupScreen = ({ navigation, onLogin }) => {
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [age, setAge] = useState('');
-  // const [region, setRegion] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // 2. Add state for the password
-  const [error, setError] = useState('');       // 3. Add state to display errors
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // 2. Detect the theme and select the correct color palette
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? darkThemeColors : lightThemeColors;
 
   const handleSignup = async () => {
-    setError(''); // Clear previous errors before a new attempt
+    setError('');
+    setLoading(true);
     const userDetails = {
       name: name,
       mobile_no: mobile,
       age: age ? parseInt(age) : undefined,
-      // region_of_commute: region,
       email: email,
       password: password,
     };
 
     try {
-      // 4. Make a POST request to the signup endpoint
       const response = await apiClient.post('/auth/signup', userDetails);
-
       console.log('Signup successful:', response.data.message);
-      
-      // 5. If signup succeeds, call onLogin() to enter the main app
       onLogin();
-
     } catch (err) {
-      // 6. If the API call fails, catch the error
       const errorMessage = err.response?.data?.message || 'An unexpected error occurred.';
-      console.error('Signup failed:', errorMessage);
-      setError(errorMessage); // Set the error message to display to the user
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
+    // Background color is STATIC from the StyleSheet
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-            <Text style={styles.backButton}>&lt;</Text>
+            {/* 3. Text color is DYNAMIC */}
+            <Text style={ styles.backButton}>&lt;</Text>
           </TouchableOpacity>
         </View>
 
@@ -67,26 +81,62 @@ const SignupScreen = ({ navigation, onLogin }) => {
             source={require('../../Assets/Profile/avatarLogin.png')}
             style={styles.avatar}
           />
-
-          <TextInput style={styles.input} placeholder="Name" value={name} onChangeText={setName} placeholderTextColor="#A9A9A9" />
-          <TextInput style={styles.input} placeholder="Mobile" value={mobile} onChangeText={setMobile} placeholderTextColor="#A9A9A9" keyboardType="phone-pad" maxLength={10} />
-          <TextInput style={styles.input} placeholder="Age" value={age} onChangeText={setAge} placeholderTextColor="#A9A9A9" keyboardType="number-pad" />
+          {/* 4. Apply dynamic colors to all inputs */}
+          <TextInput
+            style={[styles.input, { color: theme.text }]}
+            placeholder="Name"
+            value={name}
+            placeholderTextColor={theme.placeholder}
+            onChangeText={setName}
+            autoCapitalize="words"
+          />
+          <TextInput
+            style={[styles.input, { color: theme.text }]}
+            placeholder="Mobile"
+            value={mobile}
+            onChangeText={setMobile}
+            placeholderTextColor={theme.placeholder}
+            keyboardType="phone-pad"
+            maxLength={10}
+          />
+          <TextInput
+            style={[styles.input, { color: theme.text }]}
+            placeholder="Age"
+            value={age}
+            onChangeText={setAge}
+            placeholderTextColor={theme.placeholder}
+            keyboardType="number-pad"
+          />
+          <TextInput
+            style={[styles.input, { color: theme.text }]}
+            placeholder="Email (optional)"
+            value={email}
+            onChangeText={setEmail}
+            placeholderTextColor={theme.placeholder}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <TextInput
+            style={[styles.input, { color: theme.text }]}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholderTextColor={theme.placeholder}
+            secureTextEntry
+          />
           
-          {/* <TouchableOpacity style={styles.input} onPress={() => console.log('Open Region Picker!')}>
-            <Text style={region ? styles.inputText : styles.placeholderText}>{region || 'Region of daily commute'}</Text>
-            <Text style={styles.dropdownArrow}>▼</Text>
-          </TouchableOpacity> */}
-
-          <TextInput style={styles.input} placeholder="Email (optional)" value={email} onChangeText={setEmail} placeholderTextColor="#A9A9A9" keyboardType="email-address" />
-          
-          {/* 7. Add the new password input field */}
-          <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} placeholderTextColor="#A9A9A9" secureTextEntry />
-          
-          {/* 8. Conditionally display an error message if one exists */}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
-            <Text style={styles.buttonText}>Sign up now</Text>
+          <TouchableOpacity
+            style={styles.signupButton}
+            onPress={handleSignup}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>Sign up now</Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -94,9 +144,8 @@ const SignupScreen = ({ navigation, onLogin }) => {
   );
 };
 
-// 9. Add a style for the error text
+// All background styles are static here
 const styles = StyleSheet.create({
-  // ... your other styles ...
   container: {
     flex: 1,
     backgroundColor: '#F4F2F1',
@@ -107,7 +156,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     fontSize: 24,
-    color: '#333',
     fontWeight: 'bold',
   },
   content: {
@@ -130,27 +178,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     marginBottom: 15,
     fontSize: 16,
-    color: '#333',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
     elevation: 2,
-    justifyContent: 'center',
-  },
-  placeholderText: {
-    color: '#A9A9A9',
-    fontSize: 16,
-  },
-  inputText: {
-    color: '#333',
-    fontSize: 16,
-  },
-  dropdownArrow: {
-    position: 'absolute',
-    right: 20,
-    fontSize: 12,
-    color: '#888',
   },
   signupButton: {
     width: '100%',
@@ -160,10 +188,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
     elevation: 5,
   },
   buttonText: {
