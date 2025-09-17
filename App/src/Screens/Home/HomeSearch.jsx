@@ -15,14 +15,16 @@ const HomeSearch = ({ navigation }) => {
   const [destination, setDestination] = useState('');
 
   const handleSearch = () => {
-    if (!source || !destination) {
-      alert('Please enter both source and destination.');
-      return;
-    }
-    console.log(`Searching for buses from ${source} to ${destination}`);
-    navigation.navigate('SearchResults');
-    // Here we would navigate to a results screen with the bus list
-  };
+  if (!source || !destination) {
+    alert('Please enter both source and destination.');
+    return;
+  }
+  // Pass the data as a second argument to navigation.navigate
+  navigation.navigate('SearchResults', {
+    source: source,
+    destination: destination,
+  });
+};
 
   return (
     <SafeAreaView style={styles.container}>

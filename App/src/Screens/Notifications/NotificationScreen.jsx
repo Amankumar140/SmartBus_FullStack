@@ -1,14 +1,100 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, StatusBar, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { notifications } from '../../Utils/Notification';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { io } from 'socket.io-client';
+import apiClient from '../../api/client';
 import NotificationItem from '../../Components/Notification/Notification';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { API_IP_ADDRESS } from '@env'; // You correctly imported this
+
+const getIconForType = (type) => {
+  if (!type) return 'information-outline';
+  switch (type.toUpperCase()) {
+    case 'DELAY_ALERT':
+    case 'TEST_ALERT':
+      return 'bus-alert';
+    case 'PASS_EXPIRY':
+      return 'ticket-confirmation-outline';
+    case 'PROMOTION':
+      return 'gift-outline';
+    case 'TICKET_CONFIRM':
+      return 'check-circle-outline';
+    case 'ROUTE_UPDATE':
+      return 'road-variant';
+    default:
+      return 'information-outline';
+  }
+};
 
 const NotificationScreen = () => {
-  // To test the empty state, you can use an empty array:
-  // const dataToShow = [];
-  const dataToShow = notifications;
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const transformData = (apiData) => {
+    if (!Array.isArray(apiData)) return [];
+    return apiData.map(item => ({
+      id: item.notification_id.toString(),
+      title: item.message,
+      timestamp: new Date(item.sent_at).toLocaleString(),
+      read: false,
+      icon: getIconForType(item.type),
+    }));
+  };
+
+  useEffect(() => {
+    let socket;
+
+    const connectAndFetch = async () => {
+      try {
+        const token = await AsyncStorage.getItem('user_token');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        const response = await apiClient.get('/notifications', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const initialTransformedData = transformData(response.data);
+        setNotifications(initialTransformedData);
+
+        // --- THIS IS THE UPDATED LINE ---
+        // Use the variable from .env to build the URL
+        const socketUrl = `http://${API_IP_ADDRESS}:3001`;
+        socket = io(socketUrl, {
+          auth: { token },
+        });
+
+        socket.on('connect', () => {
+          console.log('Connected to WebSocket server!');
+        });
+        
+        socket.on('new_notification', (data) => {
+          console.log('Real-time update received:', data);
+          const transformedUpdate = transformData(data);
+          setNotifications(transformedUpdate);
+        });
+
+        socket.on('connect_error', (err) => {
+          console.error('Socket connection error:', err.message);
+        });
+
+      } catch (error) {
+        console.error('Failed to fetch initial notifications:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    connectAndFetch();
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, []);
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
@@ -20,6 +106,14 @@ const NotificationScreen = () => {
     </View>
   );
 
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#8E4DFF" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -28,7 +122,7 @@ const NotificationScreen = () => {
       </View>
 
       <FlatList
-        data={dataToShow}
+        data={notifications}
         renderItem={({ item }) => <NotificationItem item={item} />}
         keyExtractor={item => item.id}
         ListEmptyComponent={renderEmptyList}
@@ -41,6 +135,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     padding: 15,
