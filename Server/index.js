@@ -1,3 +1,4 @@
+ 
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -5,13 +6,13 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const db = require('./src/config/db');
-const reportRoutes = require('./src/routes/reportRoutes');
 
 // Import all route handlers
 const authRoutes = require('./src/routes/authRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const busRoutes = require('./src/routes/busRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
+const reportRoutes = require('./src/routes/reportRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,10 +26,6 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3001;
 
-
-// --- NEW: Make the 'uploads' folder public ---
- 
-
 // --- Middleware ---
 app.use(cors());
 app.use(express.json());
@@ -41,8 +38,7 @@ app.use('/api/buses', busRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 
-// --- NEW: Socket.io Middleware for Authentication ---
-// This runs for every new socket connection to verify their JWT
+// --- Socket.io Middleware for Authentication ---
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) {
@@ -52,31 +48,36 @@ io.use((socket, next) => {
     if (err) {
       return next(new Error('Authentication Error: Invalid token'));
     }
-    // Attach user id to the socket object
     socket.userId = decoded.user.id;
     next();
   });
 });
 
-// --- UPDATED: Socket.io Connection Logic ---
+// --- Socket.io Connection Logic ---
 io.on('connection', (socket) => {
-  console.log(`User ${socket.userId} connected with socket ID: ${socket.id}`);
-
-  // Join a private room based on the user's ID
-  // This allows us to send notifications only to this specific user
-  socket.join(`user-${socket.userId}`);
-
+  console.log(`User ${socket.userId} connected for real-time updates.`);
+  socket.join(`user-${socket.userId}`); // For private notifications
   socket.on('disconnect', () => {
-    console.log(`User ${socket.userId} disconnected: ${socket.id}`);
+    console.log(`User ${socket.userId} disconnected.`);
   });
 });
 
-// --- NEW: Function to check for and send notifications ---
+// --- REAL-TIME BUS TRACKING LOGIC ---
+const trackBuses = async () => {
+  try {
+    const [buses] = await db.query(
+      "SELECT bus_id, bus_number, current_location, status FROM buses WHERE status = 'active'"
+    );
+    io.emit('bus-location-update', buses); // Broadcasts to ALL users
+  } catch (error) {
+    console.error('Error fetching bus data for real-time update:', error);
+  }
+};
+
+// --- REAL-TIME NOTIFICATION LOGIC ---
 const sendNotifications = async () => {
   try {
     const [notifications] = await db.query('SELECT * FROM notifications ORDER BY sent_at DESC');
-    
-    // Group notifications by user to send them efficiently
     const notificationsByUser = {};
     notifications.forEach(notif => {
       if (!notificationsByUser[notif.user_id]) {
@@ -84,24 +85,22 @@ const sendNotifications = async () => {
       }
       notificationsByUser[notif.user_id].push(notif);
     });
-
-    // Loop through each user who has notifications and send them
     for (const userId in notificationsByUser) {
-      io.to(`user-${userId}`).emit('new_notification', notificationsByUser[userId]);
+      io.to(`user-${userId}`).emit('new_notification', notificationsByUser[userId]); // Sends to specific users
     }
   } catch (error) {
     console.error('Error sending notifications:', error);
   }
 };
 
-// Start the server and test the database connection
+// Start the server
 server.listen(PORT, async () => {
   try {
     await db.query('SELECT 1');
     console.log('🎉 Database connected successfully!');
 
-    // --- NEW: Start the real-time notification service ---
-    // Runs every 20 seconds to push updates
+    // Start both real-time services
+    setInterval(trackBuses, 20000);
     setInterval(sendNotifications, 20000);
 
   } catch (error) {
