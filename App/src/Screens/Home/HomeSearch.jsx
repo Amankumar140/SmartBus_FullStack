@@ -6,25 +6,39 @@ import {
   TextInput,
   TouchableOpacity,
   StatusBar,
-  Image, // Correctly imported here
+  Image,
+  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+const lightThemeColors = {
+  text: '#333333',
+  placeholder: '#050404ff',
+};
+
+const darkThemeColors = {
+  text: '#100c0cff',
+  placeholder: '#757575',
+};
 
 const HomeSearch = ({ navigation }) => {
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
 
+  // 2. Detect the theme and select the correct color palette
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? darkThemeColors : lightThemeColors;
+
   const handleSearch = () => {
-  if (!source || !destination) {
-    alert('Please enter both source and destination.');
-    return;
-  }
-  // Pass the data as a second argument to navigation.navigate
-  navigation.navigate('SearchResults', {
-    source: source,
-    destination: destination,
-  });
-};
+    if (!source || !destination) {
+      alert('Please enter both source and destination.');
+      return;
+    }
+    // Pass the data as a second argument to navigation.navigate
+    navigation.navigate('SearchResults', {
+      source: source,
+      destination: destination,
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -47,18 +61,21 @@ const HomeSearch = ({ navigation }) => {
         <View style={styles.searchCard}>
           <Text style={styles.searchTitle}> Where are you going? </Text>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}> FROM </Text>
+            <Text style={[styles.inputLabel, { color: theme.color }]}>
+              {' '}
+              FROM{' '}
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.placeholder }]}
               placeholder="Enter source location"
               value={source}
               onChangeText={setSource}
             />
           </View>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>TO</Text>
+            <Text style={[styles.inputLabel, { color: theme.color }]}>TO</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.placeholder }]}
               placeholder="Enter destination location"
               value={destination}
               onChangeText={setDestination}
