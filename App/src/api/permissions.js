@@ -30,11 +30,45 @@ export const requestMediaPermission = async () => {
 };
 
 export const requestLocationPermission = async () => {
-  const permission =
-    Platform.OS === 'android'
-      ? PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
-      : PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
+  try {
+    let fineLocationPermission;
+    let coarseLocationPermission;
+    
+    if (Platform.OS === 'android') {
+      fineLocationPermission = PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION;
+      coarseLocationPermission = PERMISSIONS.ANDROID.ACCESS_COARSE_LOCATION;
+    } else {
+      fineLocationPermission = PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
+    }
 
-  const result = await request(permission);
-  return result === RESULTS.GRANTED;
+    // Check current status first
+    const fineLocationStatus = await check(fineLocationPermission);
+    
+    if (fineLocationStatus === RESULTS.GRANTED) {
+      return true;
+    }
+    
+    if (fineLocationStatus === RESULTS.DENIED) {
+      // Request fine location permission
+      const fineResult = await request(fineLocationPermission);
+      if (fineResult === RESULTS.GRANTED) {
+        return true;
+      }
+    }
+    
+    // If fine location failed, try coarse location on Android
+    if (Platform.OS === 'android' && coarseLocationPermission) {
+      const coarseLocationStatus = await check(coarseLocationPermission);
+      if (coarseLocationStatus === RESULTS.DENIED) {
+        const coarseResult = await request(coarseLocationPermission);
+        return coarseResult === RESULTS.GRANTED;
+      }
+      return coarseLocationStatus === RESULTS.GRANTED;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error requesting location permission:', error);
+    return false;
+  }
 };

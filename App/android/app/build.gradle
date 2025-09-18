@@ -118,8 +118,16 @@ android {
 }
 
 dependencies {
-    // The version of react-native is set by the React Native Gradle Plugin
+    // React Native
     implementation("com.facebook.react:react-android")
+
+    // Google Play Services (use only stable versions)
+    implementation "com.google.android.gms:play-services-maps:18.2.0"
+implementation "com.google.android.gms:play-services-location:20.0.0"
+
+
+    // Remove volley unless you explicitly need it
+    // implementation "com.android.volley:volley:1.2.1"
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
@@ -127,4 +135,10 @@ dependencies {
         implementation jscFlavor
     }
 }
+
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
+configurations.all {
+    resolutionStrategy {
+        force "com.google.android.gms:play-services-location:21.0.1"
+    }
+}

@@ -318,7 +318,7 @@ import {
   requestMediaPermission,
   requestLocationPermission,
 } from '../../api/permissions';
-import Geolocation from 'react-native-geolocation-service';
+import Geolocation from '@react-native-community/geolocation';
 
 // Color definitions
 const lightThemeColors = {
@@ -339,34 +339,108 @@ const ReportScreen = ({ navigation }) => {
   const [description, setDescription] = useState('');
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationCoords, setLocationCoords] = useState(null); // Store actual coordinates
 
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkThemeColors : lightThemeColors;
 
-  useEffect(() => {
-    getCurrentLocation();
-  }, []);
-
-  // Get device location
-  const getCurrentLocation = async () => {
-    const granted = await requestLocationPermission();
-    if (!granted) {
-      Alert.alert('Permission Denied', 'Location permission is required.');
-      return;
+  // Removed automatic location fetch - now only triggered by user button press
+  
+  // Convert coordinates to place name using reverse geocoding
+  const getPlaceName = async (latitude, longitude) => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyCUxXNHEhHK49xX6_2ALNDzg1ctntetw08`
+      );
+      const data = await response.json();
+      
+      if (data.results && data.results.length > 0) {
+        // Get the most relevant address (usually the first one)
+        const address = data.results[0].formatted_address;
+        return address;
+      } else {
+        return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+      }
+    } catch (error) {
+      console.log('Geocoding error:', error);
+      return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
     }
-
-    Geolocation.getCurrentPosition(
-      pos => {
-        const { latitude, longitude } = pos.coords;
-        setLocation(`${latitude}, ${longitude}`);
-      },
-      error => {
-        console.log('Location error:', error);
-        Alert.alert('Error', 'Unable to fetch location.');
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
-    );
   };
+
+  // Get device location when user clicks the GPS button (using quick/low accuracy method)
+  const getCurrentLocation = async () => {
+    try {
+      setLocationLoading(true);
+      
+      // First check if location services are enabled
+      const granted = await requestLocationPermission();
+      
+      if (!granted) {
+        setLocationLoading(false);
+        Alert.alert(
+          'Permission Required', 
+          'Please enable location permission in your device settings to use this feature. You can still enter the location manually.',
+          [
+            { text: 'OK', style: 'default' }
+          ]
+        );
+        return;
+      }
+
+      Geolocation.getCurrentPosition(
+        async pos => {
+          const { latitude, longitude } = pos.coords;
+          // Store coordinates for backend
+          setLocationCoords({ latitude, longitude });
+          
+          // Get place name for display
+          const placeName = await getPlaceName(latitude, longitude);
+          setLocation(placeName);
+          setLocationLoading(false);
+          Alert.alert('Success', 'Current location has been added to your report.');
+        },
+        error => {
+          console.log('Location error:', error);
+          setLocationLoading(false);
+          let errorMessage = 'Unable to fetch location. ';
+          
+          switch (error.code) {
+            case 1:
+              errorMessage = 'Location permission was denied. Please enable location permission in your device settings.';
+              break;
+            case 2:
+              errorMessage = 'Location services are currently unavailable. Please check that location services are enabled on your device.';
+              break;
+            case 3:
+              errorMessage = 'Location request timed out. Please try again or enter the location manually.';
+              break;
+            default:
+              errorMessage = 'Unable to get your location. Please try again or enter the location manually.';
+          }
+          
+          Alert.alert(
+            'Location Error', 
+            errorMessage,
+            [
+              { text: 'Try Again', onPress: getCurrentLocation },
+              { text: 'Enter Manually', style: 'cancel' }
+            ]
+          );
+        },
+        { 
+          enableHighAccuracy: false,  // Use quick location (lower accuracy but faster)
+          timeout: 10000,             // Short timeout
+          maximumAge: 120000          // Allow cached location up to 2 minutes
+        },
+      );
+    } catch (error) {
+      console.error('Error in getCurrentLocation:', error);
+      setLocationLoading(false);
+      Alert.alert('Error', 'Failed to get location. You can enter it manually.');
+    }
+  };
+
 
   // Open image gallery
   const handleChoosePhoto = async () => {
@@ -401,7 +475,13 @@ const ReportScreen = ({ navigation }) => {
     const formData = new FormData();
 
     formData.append('incidentType', incidentType);
-    formData.append('location', location);
+    // Send coordinates to backend, or location text if manually entered
+    if (locationCoords) {
+      formData.append('location', `${locationCoords.latitude}, ${locationCoords.longitude}`);
+      formData.append('locationName', location); // Also send place name for reference
+    } else {
+      formData.append('location', location); // Manual entry
+    }
     formData.append('description', description);
 
     if (image) {
@@ -469,13 +549,33 @@ const ReportScreen = ({ navigation }) => {
           />
 
           <Text style={[styles.label, { color: theme.text }]}>Location</Text>
-          <TextInput
-            style={[styles.inputContainer, { color: theme.text }]}
-            value={location}
-            onChangeText={setLocation}
-            placeholder="Location of incident"
-            placeholderTextColor={theme.placeholder}
-          />
+          <View style={styles.locationInputContainer}>
+            <TextInput
+              style={[styles.locationInput, { color: theme.text }]}
+              value={location}
+              onChangeText={(text) => {
+                setLocation(text);
+                // Clear coordinates when user manually edits
+                if (locationCoords) {
+                  setLocationCoords(null);
+                }
+              }}
+              placeholder="Location of incident or tap GPS to get current location"
+              placeholderTextColor={theme.placeholder}
+              multiline
+            />
+            <TouchableOpacity
+              style={styles.locationButton}
+              onPress={getCurrentLocation}
+              disabled={locationLoading}
+            >
+              {locationLoading ? (
+                <ActivityIndicator size="small" color="#4285F4" />
+              ) : (
+                <Icon name="crosshairs-gps" size={20} color="#4285F4" />
+              )}
+            </TouchableOpacity>
+          </View>
 
           <Text style={[styles.label, { color: theme.text }]}>Description</Text>
           <TextInput
@@ -563,6 +663,26 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 20,
     fontSize: 16,
+  },
+  locationInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F7F7F7',
+    borderRadius: 10,
+    marginBottom: 20,
+    minHeight: 50,
+  },
+  locationInput: {
+    flex: 1,
+    padding: 15,
+    fontSize: 16,
+    textAlignVertical: 'top',
+  },
+  locationButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 15,
+    marginLeft: 5,
   },
   descriptionInput: {
     height: 120,
