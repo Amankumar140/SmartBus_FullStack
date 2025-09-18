@@ -15,15 +15,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import apiClient from '../../api/client';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // 1. Import AsyncStorage
 
-// 1. Define your colors directly in this file for text and placeholders
+// Color definitions (self-contained)
 const lightThemeColors = {
   text: '#333333',
-  placeholder: '#050404ff',
+  placeholder: '#A9A9A9',
 };
-
 const darkThemeColors = {
-  text: '#100c0cff',
+  text: '#E0E0E0',
   placeholder: '#757575',
 };
 
@@ -36,10 +36,10 @@ const SignupScreen = ({ navigation, onLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 2. Detect the theme and select the correct color palette
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkThemeColors : lightThemeColors;
 
+  // 2. Updated handleSignup function with auto-login logic
   const handleSignup = async () => {
     setError('');
     setLoading(true);
@@ -52,9 +52,25 @@ const SignupScreen = ({ navigation, onLogin }) => {
     };
 
     try {
-      const response = await apiClient.post('/auth/signup', userDetails);
-      console.log('Signup successful:', response.data.message);
+      // Step 1: Create the new user account
+      await apiClient.post('/auth/signup', userDetails);
+      console.log('Signup successful, now logging in...');
+
+      // Step 2: Automatically log in to get the token
+      const loginResponse = await apiClient.post('/auth/login', {
+        mobile_no: mobile,
+        password: password,
+      });
+      
+      const token = loginResponse.data.token;
+
+      // Step 3: Save the token to storage
+      await AsyncStorage.setItem('user_token', token);
+      console.log('Token saved after signup');
+      
+      // Step 4: Switch to the main app
       onLogin();
+
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'An unexpected error occurred.';
       setError(errorMessage);
@@ -64,15 +80,14 @@ const SignupScreen = ({ navigation, onLogin }) => {
   };
 
   return (
-    // Background color is STATIC from the StyleSheet
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-            {/* 3. Text color is DYNAMIC */}
-            <Text style={ styles.backButton}>&lt;</Text>
+          {/* 3. Changed to use goBack() for better navigation */}
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={[styles.backButton, { color: theme.text }]}>&lt;</Text>
           </TouchableOpacity>
         </View>
 
@@ -81,7 +96,6 @@ const SignupScreen = ({ navigation, onLogin }) => {
             source={require('../../Assets/Profile/avatarLogin.png')}
             style={styles.avatar}
           />
-          {/* 4. Apply dynamic colors to all inputs */}
           <TextInput
             style={[styles.input, { color: theme.text }]}
             placeholder="Name"
@@ -144,7 +158,6 @@ const SignupScreen = ({ navigation, onLogin }) => {
   );
 };
 
-// All background styles are static here
 const styles = StyleSheet.create({
   container: {
     flex: 1,
