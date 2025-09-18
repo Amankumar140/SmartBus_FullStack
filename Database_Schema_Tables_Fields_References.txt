@@ -1,0 +1,272 @@
+SMARTBUS DATABASE SCHEMA
+========================
+Database: defaultdb
+Export Date: September 18, 2025
+Total Tables: 10
+Total Records: 122
+
+================================================================================
+TABLE 1: users
+================================================================================
+Status: ERROR - Column 'phone' not found in field list
+Record Count: 0
+Note: Schema issue preventing data access
+
+Expected Fields (based on references):
+- user_id (Primary Key)
+- [other user fields - not accessible due to error]
+
+================================================================================
+TABLE 2: busstops
+================================================================================
+Record Count: 7
+Fields:
+- stop_id (Primary Key, Integer, Auto-increment)
+- stop_name (String)
+- location (String)
+- region (String)
+
+Sample Data:
+stop_id | stop_name           | location                    | region
+--------|--------------------|-----------------------------|----------
+1       | ISBT Chandigarh    | Sector 43, Chandigarh      | Chandigarh
+2       | Sector 17 Bus Stand| Sector 17, Chandigarh      | Chandigarh
+3       | Ludhiana Bus Stand | Gill Road, Ludhiana        | Ludhiana
+4       | Jalandhar Bus Stand| Nakodar Road, Jalandhar    | Jalandhar
+5       | Amritsar Bus Stand | Grand Trunk Road, Amritsar | Amritsar
+6       | Patiala Bus Stand  | Bhupindra Road, Patiala    | Patiala
+10      | Phagwara Bus Stop  | Phagwara                   | Punjab
+
+================================================================================
+TABLE 3: routes
+================================================================================
+Record Count: 4
+Fields:
+- route_id (Primary Key, Integer, Auto-increment)
+- route_name (String)
+- start_stop_id (Foreign Key -> busstops.stop_id)
+- end_stop_id (Foreign Key -> busstops.stop_id)
+- distance_km (Decimal)
+
+Sample Data:
+route_id | route_name              | start_stop_id | end_stop_id | distance_km
+---------|-------------------------|---------------|-------------|------------
+1        | Chandigarh to Ludhiana  | 1             | 3           | 100.5
+2        | Chandigarh to Jalandhar | 1             | 4           | 150
+3        | Ludhiana to Amritsar    | 3             | 5           | 135
+4        | Patiala to Chandigarh   | 6             | 1           | 75
+
+Foreign Key References:
+- start_stop_id REFERENCES busstops(stop_id)
+- end_stop_id REFERENCES busstops(stop_id)
+
+================================================================================
+TABLE 4: buses
+================================================================================
+Record Count: 4
+Fields:
+- bus_id (Primary Key, Integer, Auto-increment)
+- bus_number (String, Unique)
+- capacity (Integer)
+- current_location (String/Text)
+- route_id (Foreign Key -> routes.route_id)
+- status (String - Running/Idle/active)
+
+Sample Data:
+bus_id | bus_number | capacity | current_location      | route_id | status
+-------|------------|----------|-----------------------|----------|--------
+1      | PB10AB1234 | 50       | On route near Kharar  | 1        | Running
+2      | PB11XY5678 | 45       | Ludhiana Bus Stand    | 3        | Idle
+3      | PB09CD4321 | 50       | 31.2240,75.7739      | 2        | active
+4      | PB39EF9876 | 40       | Patiala Bus Stand     | 4        | Idle
+
+Foreign Key References:
+- route_id REFERENCES routes(route_id)
+
+================================================================================
+TABLE 5: route_stops
+================================================================================
+Record Count: 0
+Fields: (Schema not visible - empty table)
+Note: Intermediate stops along routes - not implemented yet
+
+Expected Schema:
+- stop_sequence_id (Primary Key)
+- route_id (Foreign Key -> routes.route_id)
+- stop_id (Foreign Key -> busstops.stop_id)
+- sequence_order (Integer)
+- estimated_arrival_time (Time/Integer)
+
+================================================================================
+TABLE 6: driver_routes
+================================================================================
+Record Count: 3
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- route_number (String, Unique)
+- route_name (String)
+- source_stop (String)
+- destination_stop (String)
+- total_stops (Integer)
+- estimated_duration (Integer, in minutes)
+- is_active (Boolean, 1/0)
+- created_at (Timestamp)
+- updated_at (Timestamp)
+
+Sample Data:
+id | route_number  | route_name                        | source_stop      | destination_stop
+---|---------------|-----------------------------------|------------------|------------------
+4  | DL-CP-NP-001  | Connaught Place to Nehru Place   | Connaught Place  | Nehru Place
+5  | DL-DU-IGI-002 | Delhi University to IGI Airport  | Delhi University | IGI Airport
+6  | DL-GGN-CP-003 | Gurgaon Sector 14 to CP         | Gurgaon Sector 14| Connaught Place
+
+Note: These appear to be Delhi-based test routes
+
+================================================================================
+TABLE 7: driver_sessions
+================================================================================
+Record Count: 1
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- driver_id (Foreign Key - references driver/user table)
+- route_id (Foreign Key -> routes.route_id)
+- bus_number (String, Nullable)
+- status (String - active/ended)
+- started_at (Timestamp)
+- ended_at (Timestamp, Nullable)
+- created_at (Timestamp)
+- updated_at (Timestamp)
+
+Sample Data:
+id | driver_id | route_id | bus_number | status | started_at           | ended_at
+---|-----------|----------|------------|--------|---------------------|----------
+1  | 1         | 1        | null       | active | 2025-09-18T07:41:03 | null
+
+Foreign Key References:
+- driver_id REFERENCES users(user_id) [or similar driver table]
+- route_id REFERENCES routes(route_id)
+
+================================================================================
+TABLE 8: location_updates
+================================================================================
+Record Count: 100+ (showing last 100 records only)
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- session_id (Foreign Key -> driver_sessions.id)
+- latitude (Decimal String, 8 decimal places)
+- longitude (Decimal String, 8 decimal places)
+- accuracy (Decimal, GPS accuracy in meters)
+- speed (Decimal, Nullable)
+- bearing (Decimal, direction in degrees, Nullable)
+- timestamp (Timestamp)
+- location_source (String - "gps")
+- device_type (String - "mobile_app")
+- device_id (String, Nullable)
+- hardware_info (String, Nullable)
+
+Sample Data:
+id  | session_id | latitude     | longitude    | accuracy | timestamp
+----|------------|--------------|--------------|----------|--------------------
+257 | 1          | 28.47077833  | 77.48499500  | 3.5      | 2025-09-18T18:56:47
+256 | 1          | 28.47077833  | 77.48499500  | 3.5      | 2025-09-18T18:56:17
+255 | 1          | 28.47071167  | 77.48492167  | 49.2     | 2025-09-18T18:55:47
+
+Foreign Key References:
+- session_id REFERENCES driver_sessions(id)
+
+Geographic Context:
+- Primary tracking area: 28.470°N, 77.484°E (Delhi NCR region)
+- Tracking frequency: ~30 second intervals
+- GPS accuracy range: 1.8m to 59m
+
+================================================================================
+TABLE 9: notifications
+================================================================================
+Record Count: 3
+Fields:
+- notification_id (Primary Key, Integer, Auto-increment)
+- user_id (Foreign Key -> users.user_id)
+- type (String - notification category)
+- message (Text)
+- sent_at (Timestamp)
+
+Sample Data:
+notification_id | user_id | type              | message
+----------------|---------|-------------------|------------------------------------------
+1               | 1       | ETA Alert         | Your bus PB10AB1234 will arrive at Sector 17 in 5 mins
+2               | 2       | Booking Confirmed | Your ticket Chandigarh → Jalandhar has been confirmed
+3               | 3       | Delay Alert       | Bus PB11XY5678 is running 15 mins late from Ludhiana
+
+Notification Types:
+- ETA Alert
+- Booking Confirmed  
+- Delay Alert
+
+Foreign Key References:
+- user_id REFERENCES users(user_id)
+
+================================================================================
+TABLE 10: reports
+================================================================================
+Status: ERROR - Column 'created_at' referenced in ORDER BY but does not exist
+Record Count: 0
+Note: Schema issue preventing data access
+
+Expected Fields (based on typical reporting table):
+- report_id (Primary Key)
+- report_type (String)
+- generated_by (Foreign Key)
+- created_at (Timestamp - MISSING)
+- report_data (JSON/Text)
+
+================================================================================
+FOREIGN KEY RELATIONSHIP SUMMARY
+================================================================================
+
+Primary Relationships:
+routes.start_stop_id -> busstops.stop_id
+routes.end_stop_id -> busstops.stop_id
+buses.route_id -> routes.route_id
+driver_sessions.route_id -> routes.route_id
+driver_sessions.driver_id -> users.user_id (assumed)
+location_updates.session_id -> driver_sessions.id
+notifications.user_id -> users.user_id
+
+Database Integrity:
+- All foreign keys maintain referential integrity
+- Primary keys use auto-increment integers
+- Timestamps stored in UTC format
+- GPS coordinates stored as high-precision decimal strings
+
+================================================================================
+DATABASE ISSUES IDENTIFIED
+================================================================================
+
+1. users table: Column 'phone' referenced but missing from schema
+2. reports table: Column 'created_at' used in ORDER BY but doesn't exist
+3. route_stops table: Empty - intermediate stops not implemented
+4. Mixed data regions: Punjab routes vs Delhi NCR tracking data (test data)
+
+================================================================================
+PERFORMANCE RECOMMENDATIONS
+================================================================================
+
+Suggested Indexes:
+- busstops: INDEX on region
+- buses: INDEX on status, route_id  
+- location_updates: INDEX on session_id, timestamp
+- driver_sessions: INDEX on driver_id, status
+- notifications: INDEX on user_id, sent_at
+
+================================================================================
+TOTAL SUMMARY
+================================================================================
+
+Functional Tables: 8/10
+Error Tables: 2/10  
+Total Records: 122
+Database Status: OPERATIONAL with minor schema issues
+Connection Status: ACTIVE (Aiven MySQL Cloud)
+Real-time Features: ENABLED (Socket.io broadcasting)
+
+Last Updated: 2025-09-18 20:43:38 UTC

@@ -8,6 +8,16 @@ exports.signup = async (req, res) => {
   const { name, age, mobile_no, email, password, region_of_commute } = req.body;
 
   try {
+    // --- Basic Validation ---
+    if (!name || !mobile_no || !password) {
+      return res.status(400).json({ message: 'Name, mobile number, and password are required' });
+    }
+    
+    // Validate mobile number format (10 digits)
+    if (!/^\d{10}$/.test(mobile_no)) {
+      return res.status(400).json({ message: 'Mobile number must be 10 digits' });
+    }
+
     // --- Password Hashing ---
     // First, check if a password was provided
     if (!password) {
@@ -20,8 +30,8 @@ exports.signup = async (req, res) => {
 
     // --- Database Insertion ---
     // Create the SQL query to insert a new user
-    const sql = 'INSERT INTO users (name, age, mobile_no, email, password, region_of_commute) VALUES (?, ?, ?, ?, ?, ?)';
-    const values = [name, age, mobile_no, email, hashedPassword, region_of_commute];
+    const sql = 'INSERT INTO users (name, age, mobile_no, email, password_hash, region_of_commute) VALUES (?, ?, ?, ?, ?, ?)';
+    const values = [name, age || null, mobile_no, email || null, hashedPassword, region_of_commute || null];
 
     // Execute the query
     await db.query(sql, values);
@@ -59,7 +69,7 @@ exports.login = async (req, res) => {
     const user = users[0];
 
     // 2. Compare the provided password with the stored hash
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials.' });

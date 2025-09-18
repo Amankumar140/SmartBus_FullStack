@@ -15,6 +15,7 @@ import apiClient from '../../api/client';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import BusCard from '../../Components/Buses/BusCard';
 import MapViewComponent from '../../Components/Map/MapViewComponent';
+import BusDetailsModal from '../../Components/Buses/BusDetailsModal';
 import BusPlaceholderImage from '../../Assets/Bus/Bus1.png';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,24 +23,126 @@ const SearchResultsScreen = ({ navigation, route }) => {
   const { source, destination } = route.params || {};
   
   const [selectedBus, setSelectedBus] = useState(null);
-  const [availableBuses, setAvailableBuses] = useState([]);
-  const [alternateBuses, setAlternateBuses] = useState([]);
+  const [buses, setBuses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showMap, setShowMap] = useState(false);
+  const [showBusDetails, setShowBusDetails] = useState(false);
 
+  // Convert coordinates to user-friendly place names
+  const getPlaceFromCoordinates = (coordinateString) => {
+    if (!coordinateString || !coordinateString.includes(',')) {
+      return 'Location updating...';
+    }
+    
+    const [lat, lng] = coordinateString.split(',').map(Number);
+    
+    // Get current hour and random variation for more natural descriptions
+    const currentHour = new Date().getHours();
+    const timeContext = currentHour < 12 ? 'morning' : currentHour < 17 ? 'afternoon' : 'evening';
+    const variations = ['Near', 'Approaching', 'At', 'Passing through'];
+    const randomVariation = variations[Math.floor(Math.random() * variations.length)];
+    
+    // Define coordinate ranges for different places with varied descriptions
+    const places = [
+      {
+        name: `${randomVariation} ISBT Chandigarh`,
+        lat: { min: 30.7200, max: 30.7400 },
+        lng: { min: 76.7600, max: 76.7900 }
+      },
+      {
+        name: `${randomVariation} Phagwara Bus Stop`,
+        lat: { min: 31.2100, max: 31.2400 },
+        lng: { min: 75.7600, max: 75.7900 }
+      },
+      {
+        name: `${randomVariation} Jalandhar Bus Stand`,
+        lat: { min: 31.3100, max: 31.3400 },
+        lng: { min: 75.5600, max: 75.5900 }
+      },
+      {
+        name: `${randomVariation} Kapurthala`,
+        lat: { min: 31.3700, max: 31.4000 },
+        lng: { min: 75.3700, max: 75.4000 }
+      },
+      {
+        name: `${randomVariation} Ludhiana`,
+        lat: { min: 30.8900, max: 30.9200 },
+        lng: { min: 75.8400, max: 75.8700 }
+      }
+    ];
+    
+    // Find matching place
+    for (const place of places) {
+      if (lat >= place.lat.min && lat <= place.lat.max && 
+          lng >= place.lng.min && lng <= place.lng.max) {
+        return place.name;
+      }
+    }
+    
+    // Fallback based on general Punjab region
+    if (lat >= 30.5 && lat <= 32.0 && lng >= 75.0 && lng <= 77.0) {
+      return `Traveling through Punjab`;
+    }
+    
+    return `En route to destination`;
+  };
+  
   const transformApiData = (apiBus) => {
-    // Gracefully handle cases where current_location might be invalid
-    const coords = apiBus.current_location ? apiBus.current_location.split(',').map(Number) : [0, 0];
-    const latitude = coords[0] || 0;
-    const longitude = coords[1] || 0;
+    // Parse location from current_location field or use default coordinates
+    let latitude = 30.7333; // Default to Chandigarh
+    let longitude = 76.7794;
+    
+    if (apiBus.current_location) {
+      if (apiBus.current_location.includes(',')) {
+        const coords = apiBus.current_location.split(',').map(Number);
+        if (coords.length >= 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+          latitude = coords[0];
+          longitude = coords[1];
+        }
+      }
+    } else {
+      // Add small random offset for each bus so they don't overlap
+      const randomOffset = (Math.random() - 0.5) * 0.01;
+      latitude += randomOffset;
+      longitude += randomOffset;
+    }
     
     return {
-      id: apiBus.bus_id,
-      busId: apiBus.bus_number,
+      // Core identifiers (ensure consistent ID mapping)
+      id: apiBus.bus_id || apiBus.id,
+      bus_id: apiBus.bus_id || apiBus.id,
+      bus_number: apiBus.bus_number,
+      
+      // Status and operational info
+      status: apiBus.status || 'unknown',
+      
+      // Route information
+      route_id: apiBus.route_id,
+      route_name: apiBus.route_name,
+      source_stop: apiBus.source_stop || apiBus.start_stop_name,
+      destination_stop: apiBus.destination_stop || apiBus.end_stop_name,
+      
+      // Driver information
+      driver_id: apiBus.driver_id,
+      driver_name: apiBus.driver_name,
+      
+      // Location data
       coordinate: { latitude, longitude },
-      type: apiBus.status === 'active' ? 'available' : 'alternate',
-      eta: '20 mins', // Placeholder
+      current_location: apiBus.current_location,
+      
+      // Additional bus properties
+      capacity: apiBus.capacity || 50,
+      distance_km: apiBus.distance_km || 0,
+      
+      // Legacy support for existing components
+      busId: apiBus.bus_number,
+      type: apiBus.status?.toLowerCase() === 'active' ? 'available' : 'alternate',
+      eta: apiBus.status === 'active' ? 'On Route' : (apiBus.status || 'Unknown'),
+      route: apiBus.route_name || 'Route not assigned',
+      from: apiBus.source_stop || apiBus.start_stop_name || 'Unknown',
+      to: apiBus.destination_stop || apiBus.end_stop_name || 'Unknown',
       imageUrl: BusPlaceholderImage,
-      changeInfo: apiBus.status !== 'active' ? `Status: ${apiBus.status}` : null,
+      changeInfo: getPlaceFromCoordinates(apiBus.current_location),
     };
   };
 
@@ -57,16 +160,13 @@ const SearchResultsScreen = ({ navigation, route }) => {
           return;
         }
 
-        const response = await apiClient.get('/buses', {
+        const response = await apiClient.get('/buses/search', {
           params: { source, destination },
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const transformedAvailable = response.data.available.map(transformApiData);
-        const transformedAlternate = response.data.alternate.map(transformApiData);
-
-        setAvailableBuses(transformedAvailable);
-        setAlternateBuses(transformedAlternate);
+        const transformedBuses = response.data.buses.map(transformApiData);
+        setBuses(transformedBuses);
       } catch (error) {
         console.error('Failed to fetch buses:', error);
       } finally {
@@ -77,7 +177,24 @@ const SearchResultsScreen = ({ navigation, route }) => {
   }, [source, destination]);
 
   const handleBusSelect = bus => {
+    if (selectedBus && selectedBus.id === bus.id) {
+      // If clicking the same bus, show details modal
+      setShowBusDetails(true);
+    } else {
+      // If selecting a different bus, set it as selected
+      setSelectedBus(bus);
+      setShowBusDetails(true);
+    }
+  };
+  
+  const handleTrackBus = (bus) => {
     setSelectedBus(bus);
+    setShowMap(true);
+    setShowBusDetails(false);
+  };
+  
+  const handleCloseBusDetails = () => {
+    setShowBusDetails(false);
   };
   
   const openChatbotLink = () => {
@@ -85,7 +202,9 @@ const SearchResultsScreen = ({ navigation, route }) => {
     Linking.openURL(chatbotUrl).catch(err => console.error("Couldn't load page", err));
   };
 
-  const allBuses = [...availableBuses, ...alternateBuses];
+  const activeBuses = buses.filter(bus => bus.status?.toLowerCase() === 'active');
+  const otherBuses = buses.filter(bus => bus.status?.toLowerCase() !== 'active');
+  const allBuses = buses;
 
   if (loading) {
     return (
@@ -103,29 +222,98 @@ const SearchResultsScreen = ({ navigation, route }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={28} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{`${source} to ${destination}`}</Text>
-        <View style={{ width: 28 }} />
+        <Text style={styles.headerTitle}>Search Results</Text>
+        <TouchableOpacity 
+          onPress={() => setShowMap(!showMap)}
+          style={styles.mapToggleButton}
+          activeOpacity={0.7}
+        >
+          <Icon name={showMap ? "map-off" : "map"} size={20} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
       
-      {selectedBus && (
-        <MapViewComponent
-          selectedBus={selectedBus}
-          buses={allBuses}
-        />
+      {/* Route Info Component */}
+      <View style={styles.routeInfo}>
+        <Icon name="map-marker" size={16} color="#4CAF50" />
+        <Text style={styles.routeText}>{source}</Text>
+        <Icon name="arrow-right" size={16} color="#666" style={styles.arrowIcon} />
+        <Icon name="map-marker" size={16} color="#FF5722" />
+        <Text style={styles.routeText}>{destination}</Text>
+      </View>
+      
+      {showMap && (
+        <View style={styles.mapContainer}>
+          <View style={styles.mapHeader}>
+            <Text style={styles.mapTitle}>
+              {selectedBus ? `Tracking Bus #${selectedBus.bus_number}` : 'All Buses'}
+            </Text>
+            <TouchableOpacity 
+              onPress={() => setShowMap(false)}
+              style={styles.mapCloseButton}
+            >
+              <Icon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          <MapViewComponent
+            selectedBus={selectedBus}
+            buses={allBuses}
+          />
+        </View>
       )}
+      
+      <BusDetailsModal
+        visible={showBusDetails}
+        bus={selectedBus}
+        onClose={handleCloseBusDetails}
+        onTrackBus={handleTrackBus}
+      />
 
-      <ScrollView style={{ flex: 1 }}>
-        <Text style={styles.sectionTitle}>Available Buses</Text>
-        {availableBuses.length > 0 ? (
-          availableBuses.map(bus => <BusCard key={bus.id} bus={bus} onPress={handleBusSelect} />)
-        ) : (
-          <Text style={styles.noBusesText}>No direct buses found for this route.</Text>
+      <ScrollView style={styles.busListContainer}>
+        {activeBuses.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Icon name="bus" size={20} color="#4CAF50" />
+              <Text style={styles.sectionTitle}>Active Buses</Text>
+              <View style={styles.liveBadge}>
+                <Text style={styles.liveBadgeText}>LIVE</Text>
+              </View>
+            </View>
+            {activeBuses.map(bus => (
+              <BusCard 
+                key={bus.id} 
+                bus={bus} 
+                onPress={handleBusSelect} 
+                isSelected={selectedBus && selectedBus.id === bus.id}
+              />
+            ))}
+          </>
         )}
-        <Text style={styles.sectionTitle}>Alternate Buses</Text>
-        {alternateBuses.length > 0 ? (
-          alternateBuses.map(bus => <BusCard key={bus.id} bus={bus} onPress={handleBusSelect} />)
-        ) : (
-          <Text style={styles.noBusesText}>No alternate buses found.</Text>
+        
+        {otherBuses.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Icon name="bus-alert" size={20} color="#FF9800" />
+              <Text style={styles.sectionTitle}>Other Buses</Text>
+            </View>
+            {otherBuses.map(bus => (
+              <BusCard 
+                key={bus.id} 
+                bus={bus} 
+                onPress={handleBusSelect} 
+                isSelected={selectedBus && selectedBus.id === bus.id}
+              />
+            ))}
+          </>
+        )}
+        
+        {buses.length === 0 && (
+          <View style={styles.noBusesContainer}>
+            <Icon name="bus-off" size={48} color="#999" />
+            <Text style={styles.noBusesText}>No buses found for this route.</Text>
+            <Text style={styles.noBusesSubtext}>
+              Try searching for a different route or check back later.
+            </Text>
+          </View>
         )}
       </ScrollView>
 
@@ -170,13 +358,115 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+  busListContainer: {
+    flex: 1,
+  },
+  mapContainer: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mapHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  mapTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#333',
+  },
+  mapCloseButton: {
+    padding: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginHorizontal: 20,
     marginTop: 20,
     marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 8,
+    flex: 1,
+  },
+  liveBadge: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  liveBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  noBusesContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  noBusesText: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  noBusesSubtext: {
+    textAlign: 'center',
+    color: '#999',
+    marginTop: 8,
+    fontSize: 14,
+  },
+  routeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  routeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginHorizontal: 6,
+    flex: 0,
+  },
+  arrowIcon: {
+    marginHorizontal: 8,
+  },
+  mapToggleButton: {
+    backgroundColor: '#8E4DFF',
+    borderRadius: 18,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   chatbotButton: {
     position: 'absolute',
@@ -199,12 +489,6 @@ const styles = StyleSheet.create({
     width: 35,
     height: 35,
     resizeMode: 'contain',
-  },
-  noBusesText: {
-    textAlign: 'center',
-    color: 'gray',
-    marginVertical: 20,
-    fontSize: 16,
   },
 });
 
