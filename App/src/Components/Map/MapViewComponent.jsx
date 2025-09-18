@@ -1,104 +1,144 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet,Image } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import { io } from 'socket.io-client';
+ 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SOCKET_URL } from '../../api/client';
 
-// 1. The component now accepts 'selectedBus' as a prop
-const MapViewComponent = ({ selectedBus }) => {
-  // 2. State is now derived from the prop
-  const [busPosition, setBusPosition] = useState(selectedBus.coordinate);
-  const [eta, setEta] = useState(parseInt(selectedBus.eta));
+const MapViewComponent = ({ selectedBus, buses }) => {
+  const [busPositions, setBusPositions] = useState(() => {
+    const initialPositions = {};
+    buses.forEach(bus => {
+      initialPositions[String(bus.id)] = bus.coordinate;
+    });
+    return initialPositions;
+  });
+
+  const mapRef = useRef(null);
 
   useEffect(() => {
-    // This effect runs whenever a NEW bus is selected from the list
-    setBusPosition(selectedBus.coordinate);
-    setEta(parseInt(selectedBus.eta));
-
-    // This interval simulates the selected bus moving and its ETA changing
-    const interval = setInterval(() => {
-      setEta(prevEta => (prevEta > 1 ? prevEta - 1 : 0));
-      setBusPosition(prevPos => ({
-        latitude: prevPos.latitude - 0.001,
-        longitude: prevPos.longitude + 0.001,
-      }));
-    }, 20000); // 3. Update interval is now 20 seconds
-
-    return () => clearInterval(interval);
-  }, [selectedBus]); // 4. The effect re-runs if the 'selectedBus' prop changes
-
-  return (
-    <View style={styles.container}>
-      <MapView
-        style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        // The map region now centers on the selected bus
-        region={{
-          ...busPosition,
+    if (selectedBus && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          ...selectedBus.coordinate,
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
-        }}
-      >
-        <Marker coordinate={busPosition}>
-          <View style={styles.markerContainer}>
-            <Text style={styles.busIcon}>🚌</Text>
-            <View style={styles.etaBubble}>
-              <Text style={styles.etaText}>{eta} min</Text>
+        },
+        1000,
+      );
+    }
+  }, [selectedBus]);
+
+  useEffect(() => {
+    let socket;
+    const setupSocket = async () => {
+      const token = await AsyncStorage.getItem('user_token');
+      if (!token) return;
+
+      socket = io(SOCKET_URL, { auth: { token } });
+
+      socket.on('bus-location-update', updatedBuses => {
+        const newPositions = updatedBuses.reduce((acc, bus) => {
+          const [latitude, longitude] = bus.current_location
+            .split(',')
+            .map(Number);
+          acc[String(bus.bus_id)] = { latitude, longitude };
+          return acc;
+        }, {});
+        setBusPositions(prevPositions => ({
+          ...prevPositions,
+          ...newPositions,
+        }));
+      });
+
+      socket.on('connect_error', err =>
+        console.error('Map socket connection error:', err.message),
+      );
+    };
+    setupSocket();
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, []);
+
+  return (
+    <MapView
+      ref={mapRef}
+      style={styles.map}
+      initialRegion={
+        buses.length > 0
+          ? {
+              ...buses[0].coordinate,
+              latitudeDelta: 0.2, // Zoom out a bit initially
+              longitudeDelta: 0.2,
+            }
+          : undefined
+      }
+    >
+      {buses.map(bus => {
+        const currentPosition = busPositions[String(bus.id)];
+        if (!currentPosition) return null; // Don't render a marker if we don't have its position
+
+        const isSelected = selectedBus && selectedBus.id === bus.id;
+        return (
+          <Marker
+            key={bus.id}
+            identifier={String(bus.id)}
+            coordinate={currentPosition}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View style={styles.markerContainer}>
+              <Image
+                source={require('../../Assets/Bus/busMarker.png')} // ✅ replace with your bus icon
+                style={isSelected ? styles.busIconSelected : styles.busIcon}
+              />
+              {isSelected && (
+                <View style={styles.etaBubble}>
+                  <Text style={styles.etaText}>{bus.eta}</Text>
+                </View>
+              )}
             </View>
-          </View>
-        </Marker>
-      </MapView>
-    </View>
+          </Marker>
+        );
+      })}
+    </MapView>
   );
 };
 
 const styles = StyleSheet.create({
-  // Defines the size of the map view on the screen.
-  container: {
-  backgroundColor: '#fff',
-  borderTopWidth: 1,       // top border
-  borderBottomWidth: 1,    // bottom border
-  borderColor: '#e0e0e0',
-  borderTopLeftRadius: 15,
-  borderTopRightRadius: 15,
-  borderBottomLeftRadius: 15,
-  borderBottomRightRadius: 15,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 3 },
-  shadowOpacity: 0.1,
-  shadowRadius: 4,
-  elevation: 4,
-},
-
   map: {
     height: 400,
     width: '100%',
   },
-  // A container for our custom marker to center the icon and bubble.
   markerContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  // Makes the bus emoji larger and more visible on the map.
   busIcon: {
-    fontSize: 30,
+    width: 30,
+    height: 30,
+    resizeMode: 'contain',
   },
-  // Styles for the small white bubble that displays the ETA.
+  busIconSelected: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+  },
   etaBubble: {
-    backgroundColor: 'white',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderColor: '#8E4DFF',
-    borderWidth: 1,
     marginTop: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
+    backgroundColor: '#fff',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    elevation: 3,
   },
-  // Styles for the text (e.g., "9 min") inside the ETA bubble.
   etaText: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#333',
   },
 });

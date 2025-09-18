@@ -7,33 +7,18 @@ import {
   TouchableOpacity,
   StatusBar,
   Image,
-  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-const lightThemeColors = {
-  text: '#333333',
-  placeholder: '#050404ff',
-};
-
-const darkThemeColors = {
-  text: '#100c0cff',
-  placeholder: '#757575',
-};
 
 const HomeSearch = ({ navigation }) => {
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
-
-  // 2. Detect the theme and select the correct color palette
-  const colorScheme = useColorScheme();
-  const theme = colorScheme === 'dark' ? darkThemeColors : lightThemeColors;
 
   const handleSearch = () => {
     if (!source || !destination) {
       alert('Please enter both source and destination.');
       return;
     }
-    // Pass the data as a second argument to navigation.navigate
     navigation.navigate('SearchResults', {
       source: source,
       destination: destination,
@@ -45,38 +30,35 @@ const HomeSearch = ({ navigation }) => {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>SmartBus</Text>
-        {/* Placeholder for a profile icon */}
-        <View style={styles.profileIconContainer}>
-          <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+          <View style={styles.profileIconContainer}>
             <Image
               source={require('../../Assets/Profile/avatarLogin.png')}
               style={styles.profileImage}
             />
-          </TouchableOpacity>
-        </View>
+          </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
-        {/* Search Card */}
         <View style={styles.searchCard}>
           <Text style={styles.searchTitle}> Where are you going? </Text>
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.color }]}>
-              {' '}
-              FROM{' '}
-            </Text>
+            <Text style={styles.inputLabel}>FROM</Text>
             <TextInput
-              style={[styles.input, { color: theme.placeholder }]}
+              style={styles.input}
               placeholder="Enter source location"
+              placeholderTextColor="#A9A9A9"
               value={source}
               onChangeText={setSource}
             />
           </View>
           <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.color }]}>TO</Text>
+            <Text style={styles.inputLabel}>TO</Text>
             <TextInput
-              style={[styles.input, { color: theme.placeholder }]}
+              style={styles.input}
               placeholder="Enter destination location"
+              placeholderTextColor="#A9A9A9"
               value={destination}
               onChangeText={setDestination}
             />
@@ -86,7 +68,6 @@ const HomeSearch = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Landing Page Text */}
         <View style={styles.taglineContainer}>
           <Text style={styles.taglineTitle}> Never miss your Bus again </Text>
           <Text style={styles.taglineSubtitle}> Apka Safar Sarthi</Text>
@@ -116,9 +97,9 @@ const styles = StyleSheet.create({
   profileIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20, // Half of width/height to make it a circle
-    overflow: 'hidden', // Hides the parts of the image that go outside the circle
-    backgroundColor: '#E0E0E0', // Shows a placeholder color if the image fails to load
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#E0E0E0',
   },
   profileImage: {
     width: '100%',

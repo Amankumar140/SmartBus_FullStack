@@ -3,7 +3,6 @@ import {
   StyleSheet,
   View,
   Text,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   TouchableOpacity,
@@ -17,17 +16,22 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import BusCard from '../../Components/Buses/BusCard';
 import MapViewComponent from '../../Components/Map/MapViewComponent';
 import BusPlaceholderImage from '../../Assets/Bus/Bus1.png';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SearchResultsScreen = ({ navigation, route }) => {
-  const { source, destination } = route.params; // Get source/destination from navigation
+  const { source, destination } = route.params || {};
   
   const [selectedBus, setSelectedBus] = useState(null);
-  const [availableBuses, setAvailableBuses] = useState([]); // State for available buses
-  const [alternateBuses, setAlternateBuses] = useState([]); // State for alternate buses
+  const [availableBuses, setAvailableBuses] = useState([]);
+  const [alternateBuses, setAlternateBuses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const transformApiData = (apiBus) => {
-    const [latitude, longitude] = apiBus.current_location.split(',').map(Number);
+    // Gracefully handle cases where current_location might be invalid
+    const coords = apiBus.current_location ? apiBus.current_location.split(',').map(Number) : [0, 0];
+    const latitude = coords[0] || 0;
+    const longitude = coords[1] || 0;
+    
     return {
       id: apiBus.bus_id,
       busId: apiBus.bus_number,
@@ -41,6 +45,7 @@ const SearchResultsScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     const fetchBuses = async () => {
+      setLoading(true);
       if (!source || !destination) {
         setLoading(false);
         return;
@@ -52,48 +57,70 @@ const SearchResultsScreen = ({ navigation, route }) => {
           return;
         }
 
-        // Send source and destination as query parameters
         const response = await apiClient.get('/buses', {
           params: { source, destination },
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // The API now returns an object with 'available' and 'alternate' arrays
         const transformedAvailable = response.data.available.map(transformApiData);
         const transformedAlternate = response.data.alternate.map(transformApiData);
 
         setAvailableBuses(transformedAvailable);
         setAlternateBuses(transformedAlternate);
-
       } catch (error) {
         console.error('Failed to fetch buses:', error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchBuses();
-  }, [source, destination]); // Re-fetch if source/destination change
+  }, [source, destination]);
 
-  const handleBusSelect = bus => { setSelectedBus(bus); };
-  const openChatbotLink = () => { /* ... */ };
+  const handleBusSelect = bus => {
+    setSelectedBus(bus);
+  };
+  
+  const openChatbotLink = () => {
+    const chatbotUrl = 'https://google.com';
+    Linking.openURL(chatbotUrl).catch(err => console.error("Couldn't load page", err));
+  };
 
-  if (loading) { /* ... loading indicator JSX ... */ }
+  const allBuses = [...availableBuses, ...alternateBuses];
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.centered}>
+        <ActivityIndicator size="large" color="#8E4DFF" />
+        <Text style={styles.loadingText}>Fetching Buses...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ... header JSX that uses source and destination ... */}
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Icon name="arrow-left" size={28} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{`${source} to ${destination}`}</Text>
+        <View style={{ width: 28 }} />
+      </View>
       
-      {selectedBus && <MapViewComponent selectedBus={selectedBus} />}
+      {selectedBus && (
+        <MapViewComponent
+          selectedBus={selectedBus}
+          buses={allBuses}
+        />
+      )}
 
-      <ScrollView>
+      <ScrollView style={{ flex: 1 }}>
         <Text style={styles.sectionTitle}>Available Buses</Text>
         {availableBuses.length > 0 ? (
           availableBuses.map(bus => <BusCard key={bus.id} bus={bus} onPress={handleBusSelect} />)
         ) : (
           <Text style={styles.noBusesText}>No direct buses found for this route.</Text>
         )}
-
         <Text style={styles.sectionTitle}>Alternate Buses</Text>
         {alternateBuses.length > 0 ? (
           alternateBuses.map(bus => <BusCard key={bus.id} bus={bus} onPress={handleBusSelect} />)
@@ -102,7 +129,14 @@ const SearchResultsScreen = ({ navigation, route }) => {
         )}
       </ScrollView>
 
-      {/* ... chatbot button JSX ... */}
+      <TouchableOpacity
+        style={styles.chatbotButton}
+        onPress={openChatbotLink}>
+        <Image
+          source={require('../../Assets/ChatBot/bot.png')}
+          style={styles.chatbotIconImage}
+        />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -132,7 +166,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F4F2F1',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#333',
   },
