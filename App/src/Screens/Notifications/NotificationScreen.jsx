@@ -7,6 +7,7 @@ import apiClient from '../../api/client';
 import NotificationItem from '../../Components/Notification/Notification';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { API_IP_ADDRESS } from '@env'; // You correctly imported this
+import { SOCKET_URL } from '../../api/client';
 
 const getIconForType = (type) => {
   if (!type) return 'information-outline';
@@ -61,7 +62,7 @@ const NotificationScreen = () => {
 
         // --- THIS IS THE UPDATED LINE ---
         // Use the variable from .env to build the URL
-        const socketUrl = `http://${API_IP_ADDRESS}:3001`;
+        const socketUrl = SOCKET_URL;
         socket = io(socketUrl, {
           auth: { token },
         });

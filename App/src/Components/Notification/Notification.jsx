@@ -2,7 +2,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-
+import { SOCKET_URL } from '../../api/client';
 const NotificationItem = ({ item }) => {
   // Choose a different background style if the notification is unread
   const containerStyle = item.read
