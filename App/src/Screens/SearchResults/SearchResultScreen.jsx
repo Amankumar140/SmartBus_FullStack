@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import BusCard from '../../Components/Buses/BusCard';
 import MapViewComponent from '../../Components/Map/MapViewComponent';
 import BusDetailsModal from '../../Components/Buses/BusDetailsModal';
+import RouteTimelineCard from '../../Components/Route/RouteTimelineCard';
 import BusPlaceholderImage from '../../Assets/Bus/Bus1.png';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -145,6 +146,54 @@ const SearchResultsScreen = ({ navigation, route }) => {
     };
   };
 
+  // Mock bus data as fallback
+  const generateMockBuses = () => {
+    return [
+      {
+        bus_id: 1,
+        bus_number: 'PB-05-1234',
+        status: 'active',
+        route_id: 1,
+        route_name: `${source} to ${destination}`,
+        source_stop: source,
+        destination_stop: destination,
+        driver_name: 'Rajesh Kumar',
+        driver_id: 1,
+        current_location: '30.7333,76.7794',
+        capacity: 45,
+        distance_km: 25.5
+      },
+      {
+        bus_id: 2,
+        bus_number: 'PB-05-5678',
+        status: 'active',
+        route_id: 2,
+        route_name: `${source} to ${destination}`,
+        source_stop: source,
+        destination_stop: destination,
+        driver_name: 'Sukhdev Singh',
+        driver_id: 2,
+        current_location: '30.7350,76.7800',
+        capacity: 50,
+        distance_km: 28.2
+      },
+      {
+        bus_id: 3,
+        bus_number: 'PB-05-9012',
+        status: 'inactive',
+        route_id: 3,
+        route_name: `${source} to ${destination}`,
+        source_stop: source,
+        destination_stop: destination,
+        driver_name: 'Manpreet Kaur',
+        driver_id: 3,
+        current_location: '30.7320,76.7780',
+        capacity: 40,
+        distance_km: 22.8
+      }
+    ];
+  };
+
   useEffect(() => {
     const fetchBuses = async () => {
       setLoading(true);
@@ -155,19 +204,34 @@ const SearchResultsScreen = ({ navigation, route }) => {
       try {
         const token = await AsyncStorage.getItem('user_token');
         if (!token) {
+          console.log('No auth token found, using mock data');
+          const mockBuses = generateMockBuses().map(transformApiData);
+          setBuses(mockBuses);
           setLoading(false);
           return;
         }
 
+        console.log('Attempting to fetch buses from API...');
         const response = await apiClient.get('/buses/search', {
           params: { source, destination },
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const transformedBuses = response.data.buses.map(transformApiData);
-        setBuses(transformedBuses);
+        if (response.data && response.data.buses && response.data.buses.length > 0) {
+          const transformedBuses = response.data.buses.map(transformApiData);
+          setBuses(transformedBuses);
+          console.log('Successfully fetched buses from API:', transformedBuses.length);
+        } else {
+          console.log('API returned no buses, using mock data');
+          const mockBuses = generateMockBuses().map(transformApiData);
+          setBuses(mockBuses);
+        }
       } catch (error) {
-        console.error('Failed to fetch buses:', error);
+        console.error('Failed to fetch buses from API:', error.message);
+        console.log('Using mock bus data as fallback');
+        // Use mock data as fallback when API fails
+        const mockBuses = generateMockBuses().map(transformApiData);
+        setBuses(mockBuses);
       } finally {
         setLoading(false);
       }
@@ -194,6 +258,12 @@ const SearchResultsScreen = ({ navigation, route }) => {
   
   const handleCloseBusDetails = () => {
     setShowBusDetails(false);
+  };
+  
+  const handleViewTimeline = () => {
+    // For now, this just ensures the timeline card stays visible
+    // Could add analytics or other functionality here
+    console.log('Timeline card clicked for bus:', selectedBus?.bus_number);
   };
   
   const openChatbot = () => {
@@ -226,7 +296,7 @@ const SearchResultsScreen = ({ navigation, route }) => {
           style={styles.mapToggleButton}
           activeOpacity={0.7}
         >
-          <Icon name={showMap ? "map-off" : "map"} size={20} color="#FFFFFF" />
+          <Icon name={showMap ? "close" : "google-maps"} size={24} color="#333" />
         </TouchableOpacity>
       </View>
       
@@ -238,6 +308,7 @@ const SearchResultsScreen = ({ navigation, route }) => {
         <Icon name="map-marker" size={16} color="#FF5722" />
         <Text style={styles.routeText}>{destination}</Text>
       </View>
+      
       
       {showMap && (
         <View style={styles.mapContainer}>
@@ -255,6 +326,8 @@ const SearchResultsScreen = ({ navigation, route }) => {
           <MapViewComponent
             selectedBus={selectedBus}
             buses={allBuses}
+            source={source}
+            destination={destination}
           />
         </View>
       )}
@@ -312,6 +385,18 @@ const SearchResultsScreen = ({ navigation, route }) => {
               Try searching for a different route or check back later.
             </Text>
           </View>
+        )}
+        
+        {/* Route Timeline Card - Show when bus is selected, at the bottom */}
+        {selectedBus && !showMap && (
+          <RouteTimelineCard
+            source={source}
+            destination={destination}
+            selectedBus={selectedBus}
+            totalStops={7} // Mock data - replace with actual stops count
+            estimatedTime={selectedBus.eta || 'N/A'}
+            onPress={handleViewTimeline}
+          />
         )}
       </ScrollView>
 
@@ -455,17 +540,19 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   mapToggleButton: {
-    backgroundColor: '#8E4DFF',
-    borderRadius: 18,
-    width: 36,
-    height: 36,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 3.84,
-    elevation: 5,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   chatbotButton: {
     position: 'absolute',

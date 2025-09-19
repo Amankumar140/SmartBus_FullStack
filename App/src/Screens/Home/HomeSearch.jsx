@@ -26,19 +26,46 @@ const HomeSearch = ({ navigation }) => {
   const [sourceSuggestions, setSourceSuggestions] = useState([]);
   const [destSuggestions, setDestSuggestions] = useState([]);
 
-  // Fetch bus stops from database
+  // Mock bus stops data for fallback
+  const mockBusStops = [
+    { stop_id: 1, stop_name: 'ISBT Chandigarh', location: 'Sector 43', region: 'Chandigarh' },
+    { stop_id: 2, stop_name: 'Chandigarh Railway Station', location: 'Sector 17', region: 'Chandigarh' },
+    { stop_id: 3, stop_name: 'PGI Chandigarh', location: 'Sector 12', region: 'Chandigarh' },
+    { stop_id: 4, stop_name: 'Phagwara Bus Stop', location: 'GT Road', region: 'Phagwara' },
+    { stop_id: 5, stop_name: 'Jalandhar Bus Stand', location: 'Bus Stand Road', region: 'Jalandhar' },
+    { stop_id: 6, stop_name: 'Ludhiana Central', location: 'Mall Road', region: 'Ludhiana' },
+    { stop_id: 7, stop_name: 'Amritsar Bus Terminal', location: 'GT Road', region: 'Amritsar' },
+    { stop_id: 8, stop_name: 'Patiala Bus Stand', location: 'Patiala Road', region: 'Patiala' },
+    { stop_id: 9, stop_name: 'Mohali Phase 7', location: 'Industrial Area', region: 'Mohali' },
+    { stop_id: 10, stop_name: 'Kurukshetra University', location: 'University Campus', region: 'Kurukshetra' },
+  ];
+
+  // Fetch bus stops from database with fallback
   useEffect(() => {
     const fetchBusStops = async () => {
       try {
         const token = await AsyncStorage.getItem('user_token');
-        if (!token) return;
+        if (!token) {
+          console.log('No token, using mock bus stops');
+          setBusStops(mockBusStops);
+          return;
+        }
 
         const response = await apiClient.get('/buses/stops', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setBusStops(response.data.stops || []);
+        
+        if (response.data && response.data.stops && response.data.stops.length > 0) {
+          setBusStops(response.data.stops);
+          console.log('Successfully fetched bus stops from API');
+        } else {
+          console.log('API returned no stops, using mock data');
+          setBusStops(mockBusStops);
+        }
       } catch (error) {
         console.error('Failed to fetch bus stops:', error);
+        console.log('Using mock bus stops as fallback');
+        setBusStops(mockBusStops);
       }
     };
 

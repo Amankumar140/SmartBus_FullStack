@@ -123,7 +123,7 @@ const SignupScreen = ({ navigation, onLogin }) => {
           />
           <TextInput
             style={[styles.input, { color: theme.text }]}
-            placeholder="Email (optional)"
+            placeholder="Email"
             value={email}
             onChangeText={setEmail}
             placeholderTextColor={theme.placeholder}

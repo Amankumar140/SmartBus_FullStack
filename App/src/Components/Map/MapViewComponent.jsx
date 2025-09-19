@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { io } from 'socket.io-client';
+import Icon from 'react-native-vector-icons/MaterialIcons';
  
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOCKET_URL } from '../../api/client';
 
-const MapViewComponent = ({ selectedBus, buses }) => {
+const MapViewComponent = ({ selectedBus, buses, source, destination }) => {
   const [busPositions, setBusPositions] = useState(() => {
     const initialPositions = {};
     buses.forEach(bus => {
@@ -17,6 +18,57 @@ const MapViewComponent = ({ selectedBus, buses }) => {
     return initialPositions;
   });
   const [isTracking, setIsTracking] = useState(false);
+
+  // Function to get coordinates from place names
+  const getCoordinatesFromPlace = (placeName) => {
+    if (!placeName) return null;
+    
+    const placeToCoords = {
+      // Chandigarh variations
+      'ISBT Chandigarh': { latitude: 30.7333, longitude: 76.7794 },
+      'Chandigarh': { latitude: 30.7333, longitude: 76.7794 },
+      'Sector 43, Chandigarh': { latitude: 30.7333, longitude: 76.7794 },
+      
+      // Ludhiana variations
+      'Ludhiana Bus Stand': { latitude: 30.9010, longitude: 75.8573 },
+      'Ludhiana': { latitude: 30.9010, longitude: 75.8573 },
+      'Gill Road, Ludhiana': { latitude: 30.9010, longitude: 75.8573 },
+      
+      // Jalandhar variations
+      'Jalandhar Bus Stand': { latitude: 31.3260, longitude: 75.5762 },
+      'Jalandhar': { latitude: 31.3260, longitude: 75.5762 },
+      'Nakodar Road, Jalandhar': { latitude: 31.3260, longitude: 75.5762 },
+      
+      // Amritsar variations
+      'Amritsar Bus Stand': { latitude: 31.6340, longitude: 74.8723 },
+      'Amritsar': { latitude: 31.6340, longitude: 74.8723 },
+      'Grand Trunk Road, Amritsar': { latitude: 31.6340, longitude: 74.8723 },
+      
+      // Patiala variations
+      'Patiala Bus Stand': { latitude: 30.3398, longitude: 76.3869 },
+      'Patiala': { latitude: 30.3398, longitude: 76.3869 },
+      'Bhupindra Road, Patiala': { latitude: 30.3398, longitude: 76.3869 },
+      
+      // Phagwara
+      'Phagwara Bus Stop': { latitude: 31.2240, longitude: 75.7739 },
+      'Phagwara': { latitude: 31.2240, longitude: 75.7739 },
+    };
+    
+    // Try exact match first
+    if (placeToCoords[placeName]) {
+      return placeToCoords[placeName];
+    }
+    
+    // Try partial match
+    for (const [place, coords] of Object.entries(placeToCoords)) {
+      if (placeName.toLowerCase().includes(place.toLowerCase()) || 
+          place.toLowerCase().includes(placeName.toLowerCase())) {
+        return coords;
+      }
+    }
+    
+    return null;
+  };
 
   const mapRef = useRef(null);
 
@@ -197,7 +249,7 @@ const MapViewComponent = ({ selectedBus, buses }) => {
           console.log(`✅ Bus ${bus.bus_number} - Position:`, currentPosition);
 
           const isSelected = selectedBus && (selectedBus.bus_id || selectedBus.id) === (bus.bus_id || bus.id);
-          const isActive = bus.status?.toLowerCase() === 'active';
+          const isActive = bus.status?.toLowerCase() === 'active' || bus.status?.toLowerCase() === 'running';
           
           return (
             <Marker
@@ -260,33 +312,76 @@ const MapViewComponent = ({ selectedBus, buses }) => {
         })}
         
         {/* Route Line for Selected Bus */}
-        {selectedBus && selectedBus.source_stop && selectedBus.destination_stop && (
-          <Polyline
-            coordinates={[
-              { latitude: 30.7333, longitude: 76.7794 }, // Chandigarh (source)
-              { latitude: 31.2240, longitude: 75.7739 }, // Phagwara (current bus location)
-              { latitude: 31.3260, longitude: 75.5762 }, // Jalandhar (destination)
-            ]}
-            strokeColor="#87CEEB" // Sky blue color
-            strokeWidth={4}
-            lineDashPattern={[10, 5]} // Dashed line pattern
-          />
-        )}
+        {selectedBus && selectedBus.source_stop && selectedBus.destination_stop && (() => {
+          const sourceCoords = getCoordinatesFromPlace(selectedBus.source_stop);
+          const destCoords = getCoordinatesFromPlace(selectedBus.destination_stop);
+          const busCoords = selectedBus.coordinate;
+          
+          if (sourceCoords && destCoords) {
+            let routeCoords = [sourceCoords];
+            
+            // Add bus current position if available
+            if (busCoords && busCoords.latitude && busCoords.longitude) {
+              routeCoords.push(busCoords);
+            }
+            
+            routeCoords.push(destCoords);
+            
+            return (
+              <Polyline
+                coordinates={routeCoords}
+                strokeColor="#2196F3" // Blue color
+                strokeWidth={4}
+                lineDashPattern={[10, 5]} // Dashed line pattern
+              />
+            );
+          }
+          return null;
+        })()}
         
-        {/* General Route Line if no bus selected but showing all buses */}
-        {!selectedBus && buses.length > 0 && (
-          <Polyline
-            coordinates={[
-              { latitude: 30.7333, longitude: 76.7794 }, // Chandigarh
-              { latitude: 31.2240, longitude: 75.7739 }, // Phagwara
-              { latitude: 31.3260, longitude: 75.5762 }, // Jalandhar
-            ]}
-            strokeColor="#87CEEB" // Sky blue color
-            strokeWidth={3}
-            strokeOpacity={0.7}
-            lineDashPattern={[5, 5]} // Lighter dashed pattern
-          />
-        )}
+        {/* General Route Line based on search source/destination */}
+        {source && destination && (() => {
+          const sourceCoords = getCoordinatesFromPlace(source);
+          const destCoords = getCoordinatesFromPlace(destination);
+          
+          if (sourceCoords && destCoords) {
+            return (
+              <>
+                {/* Source marker */}
+                <Marker
+                  coordinate={sourceCoords}
+                  anchor={{ x: 0.5, y: 1 }}
+                  title={`Source: ${source}`}
+                >
+                  <View style={styles.routeMarker}>
+                    <Icon name="map-marker" size={30} color="#4CAF50" />
+                  </View>
+                </Marker>
+                
+                {/* Destination marker */}
+                <Marker
+                  coordinate={destCoords}
+                  anchor={{ x: 0.5, y: 1 }}
+                  title={`Destination: ${destination}`}
+                >
+                  <View style={styles.routeMarker}>
+                    <Icon name="map-marker" size={30} color="#FF5722" />
+                  </View>
+                </Marker>
+                
+                {/* Route line */}
+                <Polyline
+                  coordinates={[sourceCoords, destCoords]}
+                  strokeColor="#87CEEB" // Sky blue color
+                  strokeWidth={3}
+                  strokeOpacity={0.8}
+                  lineDashPattern={[8, 4]} // Dashed line pattern
+                />
+              </>
+            );
+          }
+          return null;
+        })()}
       </MapView>
     </View>
   );
@@ -457,6 +552,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
     textAlign: 'center',
+  },
+  routeMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

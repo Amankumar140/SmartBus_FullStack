@@ -7,8 +7,10 @@ const BusCard = ({ bus, onPress, isSelected = false }) => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'active':
+      case 'running':
         return '#4CAF50';
       case 'inactive':
+      case 'idle':
         return '#FF5722';
       case 'maintenance':
         return '#FF9800';
@@ -20,8 +22,10 @@ const BusCard = ({ bus, onPress, isSelected = false }) => {
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
       case 'active':
+      case 'running':
         return 'directions-bus';
       case 'inactive':
+      case 'idle':
         return 'bus-alert';
       case 'maintenance':
         return 'build';
@@ -108,7 +112,7 @@ const BusCard = ({ bus, onPress, isSelected = false }) => {
           size={24} 
           color="#666" 
         />
-        {bus.status === 'active' && (
+        {(bus.status === 'active' || bus.status === 'Running') && (
           <View style={styles.trackingIndicator}>
             <Icon name="my-location" size={12} color="#4CAF50" />
             <Text style={styles.trackingText}>LIVE</Text>

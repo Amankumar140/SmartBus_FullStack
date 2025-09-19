@@ -2,17 +2,23 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import { API_IP_ADDRESS } from '@env';
 
-// Decide the host depending on platform (emulator vs device)
-// const API_HOST =
-//   Platform.OS === 'android'
-//     ? (__DEV__ ? '10.0.2.2' : API_IP_ADDRESS) // Android Emulator in dev
-//     : API_IP_ADDRESS; // iOS simulator + physical devices
+// Production URLs (Render deployment)
+const PRODUCTION_API_BASE_URL = 'https://smartbus-fullstack.onrender.com/api';
+const PRODUCTION_SOCKET_URL = 'https://smartbus-fullstack.onrender.com';
 
-const API_HOST = API_IP_ADDRESS;
+// Development URLs
+const DEV_API_HOST = API_IP_ADDRESS || '192.168.0.108';
+const DEV_API_BASE_URL = `http://${DEV_API_HOST}:3001/api`;
+const DEV_SOCKET_URL = `http://${DEV_API_HOST}:3001`;
 
-// Base URLs
-export const API_BASE_URL = `http://${API_HOST}:3001/api`;
-export const SOCKET_URL = `http://${API_HOST}:3001`;
+// Use production URLs for release builds, development URLs for debug
+export const API_BASE_URL = __DEV__ ? DEV_API_BASE_URL : PRODUCTION_API_BASE_URL;
+export const SOCKET_URL = __DEV__ ? DEV_SOCKET_URL : PRODUCTION_SOCKET_URL;
+
+console.log('🌐 API Configuration:');
+console.log('📡 API Base URL:', API_BASE_URL);
+console.log('🔌 Socket URL:', SOCKET_URL);
+console.log('🛠️ Development Mode:', __DEV__);
 
 // Axios client
 const apiClient = axios.create({
