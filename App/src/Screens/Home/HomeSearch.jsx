@@ -149,7 +149,7 @@ const HomeSearch = ({ navigation }) => {
 
       <View style={styles.content}>
         <View style={styles.searchCard}>
-          <Text style={styles.searchTitle}>🚌 Where are you going?</Text>
+          <Text style={styles.searchTitle}>🚍  Where are you going?</Text>
           
           {/* Source Input */}
           <View style={styles.inputContainer}>
@@ -252,6 +252,17 @@ const HomeSearch = ({ navigation }) => {
           <Text style={styles.taglineSubtitle}> Apka Safar Sarthi</Text>
         </View>
       </View>
+      
+      <TouchableOpacity
+        style={styles.chatbotButton}
+        onPress={() => navigation.navigate('ChatBot')}
+        activeOpacity={0.7}
+      >
+        <Image
+          source={require('../../Assets/ChatBot/bot.png')}
+          style={styles.chatbotIconImage}
+        />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -324,7 +335,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    padding: 15,
+    padding: 10,
     fontSize: 16,
     color: '#333',
   },
@@ -365,7 +376,7 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     backgroundColor: '#8E4DFF',
-    paddingVertical: 18,
+    paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -427,6 +438,28 @@ const styles = StyleSheet.create({
     color: '#555',
     textAlign: 'center',
     marginTop: 10,
+  },
+  chatbotButton: {
+    position: 'absolute',
+    bottom: 90,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
+    zIndex: 10,
+  },
+  chatbotIconImage: {
+    width: 35,
+    height: 35,
+    resizeMode: 'contain',
   },
 });
 

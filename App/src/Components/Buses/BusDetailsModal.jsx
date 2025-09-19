@@ -301,12 +301,12 @@ const BusDetailsModal = ({ visible, bus, onClose, onTrackBus }) => {
                 <Text style={styles.sectionTitle}>Bus Information</Text>
               </View>
               <View style={styles.specsCard}>
-                <View style={styles.specRow}>
+                {/* <View style={styles.specRow}>
                   <Text style={styles.specLabel}>Capacity:</Text>
                   <Text style={styles.specValue}>
                     {busDetails?.capacity || bus?.capacity || '50'} passengers
                   </Text>
-                </View>
+                </View> */}
                 <View style={styles.specRow}>
                   <Text style={styles.specLabel}>Bus Number:</Text>
                   <Text style={styles.specValue}>{bus?.bus_number}</Text>

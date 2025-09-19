@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import apiClient from '../../api/client'; // 1. Import the API client
 import AsyncStorage from '@react-native-async-storage/async-storage'; // 2. Import AsyncStorage
 
@@ -73,7 +74,7 @@ const LoginScreen = ({ navigation, onLogin }) => {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate('Landing')}>
-            <Text style={styles.backButton}>&lt;</Text>
+            <Icon name="arrow-left" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
 
@@ -140,11 +141,6 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     alignItems: 'flex-start',
-  },
-  backButton: {
-    fontSize: 24,
-    color: '#333',
-    fontWeight: 'bold',
   },
   content: {
     flex: 1,

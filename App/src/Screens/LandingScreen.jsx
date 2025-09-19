@@ -39,10 +39,10 @@ const styles = StyleSheet.create({
   },
   getStartedButton: {
     marginBottom: 80,
-    width: '80%',
+    width: '60%',
     backgroundColor: '#8E4DFF',
-    paddingVertical: 18,
-    borderRadius: 16,
+    paddingVertical: 14,
+    borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

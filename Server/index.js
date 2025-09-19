@@ -13,6 +13,7 @@ const userRoutes = require('./src/routes/userRoutes');
 const busRoutes = require('./src/routes/busRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
+const chatRoutes = require('./src/routes/chatRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -37,6 +38,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/buses', busRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/chat', chatRoutes);
 
 // --- Socket.io Middleware for Authentication ---
 io.use((socket, next) => {

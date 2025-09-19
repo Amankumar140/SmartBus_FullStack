@@ -7,7 +7,6 @@ import {
   StatusBar,
   TouchableOpacity,
   Image,
-  Linking,
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -197,9 +196,8 @@ const SearchResultsScreen = ({ navigation, route }) => {
     setShowBusDetails(false);
   };
   
-  const openChatbotLink = () => {
-    const chatbotUrl = 'https://google.com';
-    Linking.openURL(chatbotUrl).catch(err => console.error("Couldn't load page", err));
+  const openChatbot = () => {
+    navigation.navigate('ChatBot');
   };
 
   const activeBuses = buses.filter(bus => bus.status?.toLowerCase() === 'active');
@@ -319,7 +317,8 @@ const SearchResultsScreen = ({ navigation, route }) => {
 
       <TouchableOpacity
         style={styles.chatbotButton}
-        onPress={openChatbotLink}>
+        onPress={openChatbot}
+        activeOpacity={0.7}>
         <Image
           source={require('../../Assets/ChatBot/bot.png')}
           style={styles.chatbotIconImage}

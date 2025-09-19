@@ -13,6 +13,7 @@ import SearchResultsScreen from '../Screens/SearchResults/SearchResultScreen';
 import NotificationScreen from '../Screens/Notifications/NotificationScreen';
 import ReportScreen from '../Screens/Report/ReportScreen';
 import ProfileScreen from '../Screens/Profile/ProfileScreen';
+import ChatBotScreen from '../Screens/ChatBot/ChatBotScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -34,11 +35,12 @@ const AuthStack = ({ onLogin }) => (
 
 // --- HOME STACK ---
 // This is a nested stack for the "Home" tab.
-// It allows you to navigate from HomeScreen to SearchResultsScreen.
+// It allows you to navigate from HomeScreen to SearchResultsScreen and ChatBot.
 const HomeStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="HomeMain" component={HomeSearch} />
     <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
+    <Stack.Screen name="ChatBot" component={ChatBotScreen} />
   </Stack.Navigator>
 );
 

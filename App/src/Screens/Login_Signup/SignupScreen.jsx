@@ -23,7 +23,7 @@ const lightThemeColors = {
   placeholder: '#A9A9A9',
 };
 const darkThemeColors = {
-  text: '#E0E0E0',
+  text: '#0f0c0cff',
   placeholder: '#757575',
 };
 
@@ -87,7 +87,7 @@ const SignupScreen = ({ navigation, onLogin }) => {
         <View style={styles.header}>
           {/* 3. Changed to use goBack() for better navigation */}
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={[styles.backButton, { color: theme.text }]}>&lt;</Text>
+            <Icon name="arrow-left" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
 
@@ -167,10 +167,6 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'flex-start',
   },
-  backButton: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
   content: {
     alignItems: 'center',
     paddingHorizontal: 30,
@@ -188,7 +184,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 11,
     marginBottom: 15,
     fontSize: 16,
     elevation: 2,
@@ -196,8 +192,8 @@ const styles = StyleSheet.create({
   signupButton: {
     width: '100%',
     backgroundColor: '#8E4DFF',
-    paddingVertical: 18,
-    borderRadius: 12,
+    paddingVertical: 15,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
